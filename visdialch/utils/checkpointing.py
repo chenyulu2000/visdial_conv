@@ -108,14 +108,15 @@ class CheckpointManager(object):
         self.last_epoch = epoch
 
         if not self.last_epoch % self.step_size:
-            torch.save(
-                {
-                    "model": self._model_state_dict(),
-                    "optimizer": self.optimizer.state_dict(),
-                    "epoch": self.last_epoch
-                },
-                self.ckpt_dirpath / f"checkpoint_{self.last_epoch}.pth",
-            )
+            pass
+            # torch.save(
+            #     {
+            #         "model": self._model_state_dict(),
+            #         "optimizer": self.optimizer.state_dict(),
+            #         "epoch": self.last_epoch
+            #     },
+            #     self.ckpt_dirpath / f"checkpoint_{self.last_epoch}.pth",
+            # )
 
     def _model_state_dict(self):
         """Returns state dict of model, taking care of DataParallel case."""

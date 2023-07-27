@@ -5,12 +5,14 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
+import random
 
 from visdialch.utils import DynamicRNN
 from visdialch.vqa_models.mcan.net import MCAN_Net
 from visdialch.vqa_models.mcan.model_cfgs import Cfgs
 from visdialch.vqa_models.mcan.make_mask import make_mask
 from visdialch.utils import dotdict
+
 
 class MCANImgMCANHistEncoder(nn.Module):
     def __init__(self, config, vocabulary):
@@ -55,7 +57,6 @@ class MCANImgMCANHistEncoder(nn.Module):
             )
             self.hist_rnn = DynamicRNN(self.hist_rnn)
 
-
         self.ques_rnn = DynamicRNN(self.ques_rnn)
 
         # project image features to lstm_hidden_size for computing attention
@@ -64,7 +65,7 @@ class MCANImgMCANHistEncoder(nn.Module):
         )
 
         fusion_size = (
-            config["lstm_hidden_size"] * 2
+                config["lstm_hidden_size"] * 2
         )
         self.fusion = nn.Linear(fusion_size, config["lstm_hidden_size"])
 
@@ -73,14 +74,25 @@ class MCANImgMCANHistEncoder(nn.Module):
         nn.init.kaiming_uniform_(self.fusion.weight)
         nn.init.constant_(self.fusion.bias, 0)
 
-    def forward(self, batch):
+    def forward(self, batch, cfq_batch=False, cfic_batch=False):
         # shape: (batch_size, img_feature_size) - CNN fc7 features
         # shape: (batch_size, num_proposals, img_feature_size) - RCNN features
         img = batch["img_feat"]
         # shape: (batch_size, 10, max_sequence_length)
         ques = batch["ques"]
+
         # num_rounds = 10, even for test (padded dialog rounds at the end)
         batch_size, num_rounds, max_sequence_length = ques.size()
+
+        # for cs-debiasing
+        ques_len = batch['ques_len']
+        if cfq_batch:
+            index_cfq = random.sample(range(0, batch_size), batch_size)
+            ques, ques_len = ques[index_cfq], ques_len[index_cfq]
+
+        if cfic_batch:
+            index_cfic = random.sample(range(0, batch_size), batch_size)
+            img = img[index_cfic]
 
         # project down image features and ready for attention
         # shape: (batch_size, num_proposals, lstm_hidden_size)
@@ -102,13 +114,12 @@ class MCANImgMCANHistEncoder(nn.Module):
 
         lang_feat_mask = make_mask(ques.unsqueeze(2))
 
-        ques = ques.squeeze(1) ## Hacky way to get around masking
+        ques = ques.squeeze(1)  ## Hacky way to get around masking
         ques_embed = self.word_embed(ques)
 
         # shape: (batch_size * num_rounds, max_sequence_length,
         #         lstm_hidden_size)
         q_embed_per_word, (ques_embed, _) = self.ques_rnn(ques_embed, batch["ques_len"])
-
 
         # (batch_size * num_rounds,
         #         lstm_hidden_size)

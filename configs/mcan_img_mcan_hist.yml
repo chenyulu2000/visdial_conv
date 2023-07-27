@@ -1,3 +1,4 @@
+# ---------------- ************* -----------------
 # Dataset reader arguments
 dataset:
   image_features_train_h5: '/features_faster_rcnn_x101_train.h5'
@@ -27,10 +28,15 @@ model:
   lstm_num_layers: 1
   dropout: 0.2
 
+  cfq_interval: 1 # or 1
+  cfic_interval: -1 # or 5
+  lambda_cfq: -1
+  lambda_cfic: -1
+
 
 # Optimization related arguments
 solver:
-  batch_size: 4 # 32 x num_gpus is a good rule of thumb
+  batch_size: 12 # 32 x num_gpus is a good rule of thumb
   num_epochs: 15
   num_epochs_curriculum: 2
   initial_lr: 0.0005

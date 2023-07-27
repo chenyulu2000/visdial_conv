@@ -4,6 +4,7 @@ import itertools
 from tensorboardX import SummaryWriter
 import torch
 from torch import nn, optim
+from torch.nn.functional import relu
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -46,21 +47,20 @@ def parse_args():
         "--val-dense-json",
         default="data/visdial_1.0_val_dense_annotations.json",
         help="Path to json file containing VisDial v1.0 validation dense ground "
-        "truth annotations.",
+             "truth annotations.",
     )
     parser.add_argument(
         "--train-dense-json",
         default="data/visdial_1.0_train_dense_annotations.json",
         help="Path to json file containing VisDial v1.0 validation dense ground "
-        "truth annotations.",
+             "truth annotations.",
     )
     parser.add_argument(
         "--augment-train-dense-json",
         default="data/visdial_1.0_train_dense_annotations.json",
         help="Path to json file containing VisDial v1.0 validation dense ground "
-        "truth annotations.",
+             "truth annotations.",
     )
-
 
     parser.add_argument(
         "--data_dir",
@@ -98,7 +98,7 @@ def parse_args():
         "--in-memory",
         action="store_true",
         help="Load the whole dataset and pre-extracted image features in memory. "
-        "Use only in presence of large RAM, atleast few tens of GBs.",
+             "Use only in presence of large RAM, atleast few tens of GBs.",
     )
 
     parser.add_argument_group("Checkpointing related arguments")
@@ -106,7 +106,7 @@ def parse_args():
         "--save-dirpath",
         default="checkpoints/",
         help="Path of directory to create checkpoint directory and save "
-        "checkpoints.",
+             "checkpoints.",
     )
     parser.add_argument(
         "--load-pthpath",
@@ -204,7 +204,6 @@ def parse_args():
 def get_dataloader(config, args,
                    finetune: bool = False,
                    use_augment_dense: bool = False):
-
     # SA: pin memory for speed up
     # https://discuss.pytorch.org/t/when-to-set-pin-memory-to-true/19723/2
     pin_memory = config["solver"].get("pin_memory", True)
@@ -234,18 +233,17 @@ def get_dataloader(config, args,
                                                              concat=config["dataset"]["concat_history"],
                                                              emb_type=args.emb_type)
     hist_emb_val_file_path = get_hist_embeddings_file_path(emb_dir_file_path,
-                                                             data_type="val",
-                                                             concat=config["dataset"]["concat_history"],
-                                                             emb_type=args.emb_type)
-
+                                                           data_type="val",
+                                                           concat=config["dataset"]["concat_history"],
+                                                           emb_type=args.emb_type)
 
     pin_memory = config["solver"].get("pin_memory", True)
     print(f"Pin memory is set to {pin_memory}")
 
     if use_augment_dense:
-        augment_dense_annotations_jsonpath=args.augment_train_dense_json
+        augment_dense_annotations_jsonpath = args.augment_train_dense_json
     else:
-        augment_dense_annotations_jsonpath=None
+        augment_dense_annotations_jsonpath = None
 
     # SA: todo generalize "disc"   config["model"]["decoder"] == "disc"
     train_dataset = VisDialDataset(
@@ -307,9 +305,7 @@ def get_dataloader(config, args,
     return dataloader_dic
 
 
-
 def get_model(config, args, train_dataset, device):
-
     # Pass vocabulary to construct Embedding layer.
     encoder = Encoder(config["model"], train_dataset.vocabulary)
     decoder = Decoder(config["model"], train_dataset.vocabulary)
@@ -357,6 +353,7 @@ def compute_ndcg_type_loss(output, labels, log_softmax=nn.LogSoftmax(dim=-1)):
     loss = -torch.mean(torch.sum(labels.view(batch_size, -1) * output.view(batch_size, -1), dim=1))
     return loss
 
+
 def mse_loss(output, labels, criterion, log_softmax=nn.LogSoftmax(dim=-1)):
     # output = log_softmax(output)  # (bs, options)
     batch_size, num_options = output.size()
@@ -365,7 +362,6 @@ def mse_loss(output, labels, criterion, log_softmax=nn.LogSoftmax(dim=-1)):
     loss = torch.sum((output - labels) ** 2)
     # loss = criterion(labels, output)
     return loss
-
 
 
 def get_loss_criterion(config, train_dataset):
@@ -382,7 +378,6 @@ def get_loss_criterion(config, train_dataset):
 
 
 def get_solver(config, args, train_dataset, val_dataset, model, finetune: bool = False):
-
     if not finetune:
         initial_lr = config["solver"]["initial_lr"]
         lr_scheduler_type = args.lr_scheduler_type
@@ -473,11 +468,12 @@ def train(config, args, dataloader_dic,
 
     if finetune and not dense_scratch_train:
         assert load_pthpath != "", "Please provide a path" \
-                                        " for pre-trained model before " \
-                                        "starting fine tuning"
+                                   " for pre-trained model before " \
+                                   "starting fine tuning"
         print(f"\n Begin Finetuning:")
 
-    optimizer, scheduler, iterations, lr_scheduler_type = get_solver(config, args, train_dataset, val_dataset, model, finetune=finetune)
+    optimizer, scheduler, iterations, lr_scheduler_type = get_solver(config, args, train_dataset, val_dataset, model,
+                                                                     finetune=finetune)
 
     start_time = datetime.datetime.strftime(datetime.datetime.utcnow(), '%d-%b-%Y-%H:%M:%S')
     if args.save_dirpath == 'checkpoints/':
@@ -533,7 +529,7 @@ def train(config, args, dataloader_dic,
     train_begin = datetime.datetime.utcnow()  # New
 
     if finetune:
-        end_epoch = start_epoch + config["solver"]["num_epochs_curriculum"]-1
+        end_epoch = start_epoch + config["solver"]["num_epochs_curriculum"] - 1
         if finetune_regression:
             # criterion = nn.MSELoss(reduction='mean')
             # criterion = nn.KLDivLoss(reduction='mean')
@@ -565,8 +561,8 @@ def train(config, args, dataloader_dic,
                 target = batch["gt_relevance"]
                 # Same as for ndcg validation, only one round is present
                 output = output[
-                        torch.arange(output.size(0)), batch["round_id"] - 1, :
-                    ]
+                         torch.arange(output.size(0)), batch["round_id"] - 1, :
+                         ]
                 # SA: todo regression loss
                 if finetune_regression:
                     batch_loss = mse_loss(output, target, criterion)
@@ -575,6 +571,23 @@ def train(config, args, dataloader_dic,
             else:
                 batch_loss = get_batch_criterion_loss_value(config, batch, criterion, output)
 
+                is_cfq, is_cfic = False, False
+                if config.cfq_interval != -1 and i % config.cfq_interval == 1:
+                    is_cfq = True
+                elif config.cfic_interval != -1 and i % config.cfic_interval == 1:
+                    is_cfic = True
+
+                if is_cfq:
+                    cfq_output = model(batch, True, False)
+                    cfq_loss = get_batch_criterion_loss_value(config, batch=batch, criterion=criterion,
+                                                              output=cfq_output)
+                    batch_loss += config.lambda_cfq * cfq_loss
+                if is_cfic:
+                    cfic_output = model(batch, False, True)
+                    batch_loss += config.lambda_cfic * get_batch_criterion_loss_value(config, batch=batch,
+                                                                                      criterion=criterion,
+                                                                                      output=cfic_output)
+                batch_loss = relu(batch_loss + 0.2)
             batch_loss.backward()
             optimizer.step()
 
@@ -596,8 +609,8 @@ def train(config, args, dataloader_dic,
                 # print current time, running average, learning rate, iteration, epoch
                 print("[{}][Epoch: {:3d}][Iter: {:6d}][Loss: {:6f}][lr: {:8f}]".format(
                     datetime.datetime.utcnow() - train_begin, epoch,
-                        global_iteration_step, running_loss,
-                        optimizer.param_groups[0]['lr']))
+                    global_iteration_step, running_loss,
+                    optimizer.param_groups[0]['lr']))
 
                 # tensorboardX
                 summary_writer.add_scalar(
@@ -607,7 +620,6 @@ def train(config, args, dataloader_dic,
                     "train/lr", optimizer.param_groups[0]["lr"], global_iteration_step
                 )
         torch.cuda.empty_cache()
-
 
         # -------------------------------------------------------------------------
         #   ON EPOCH END  (checkpointing and validation)
@@ -635,8 +647,8 @@ def train(config, args, dataloader_dic,
                         target = batch["gt_relevance"]
                         # Same as for ndcg validation, only one round is present
                         out_ndcg = output[
-                                torch.arange(output.size(0)), batch["round_id"] - 1, :
-                            ]
+                                   torch.arange(output.size(0)), batch["round_id"] - 1, :
+                                   ]
                         # SA: todo regression loss
                         if finetune_regression:
                             batch_loss = mse_loss(out_ndcg, target, criterion)
@@ -649,8 +661,8 @@ def train(config, args, dataloader_dic,
                 sparse_metrics.observe(output, batch["ans_ind"])
                 if "gt_relevance" in batch:
                     output = output[
-                        torch.arange(output.size(0)), batch["round_id"] - 1, :
-                    ]
+                             torch.arange(output.size(0)), batch["round_id"] - 1, :
+                             ]
                     ndcg.observe(output, batch["gt_relevance"])
 
             all_metrics = {}
@@ -700,7 +712,8 @@ def train(config, args, dataloader_dic,
                 # scheduler.step(val_loss)
                 # SA: # Loss should decrease while ndcg should increase!
                 # can also change the mode in LR reduce on plateau to max
-                scheduler.step(-1*val_ndcg)
+                scheduler.step(-1 * val_ndcg)
+
 
 def main():
     args = parse_args()
@@ -712,19 +725,21 @@ def main():
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
-
     # =============================================================================
     #   INPUT ARGUMENTS AND CONFIG
     # =============================================================================
 
     # keys: {"dataset", "model", "solver"}
-    config = yaml.load(open(args.config_yml))
+    config = yaml.safe_load(open(args.config_yml))
 
     # SA: Changing relative paths to absolute paths
     # Works when you also provide data paths as "../data/features****"
-    config["dataset"]["image_features_train_h5"] = "{}/{}".format(args.data_dir, config["dataset"]["image_features_train_h5"])
-    config["dataset"]["image_features_val_h5"] = "{}/{}".format(args.data_dir, config["dataset"]["image_features_val_h5"])
-    config["dataset"]["image_features_test_h5"] = "{}/{}".format(args.data_dir, config["dataset"]["image_features_test_h5"])
+    config["dataset"]["image_features_train_h5"] = "{}/{}".format(args.data_dir,
+                                                                  config["dataset"]["image_features_train_h5"])
+    config["dataset"]["image_features_val_h5"] = "{}/{}".format(args.data_dir,
+                                                                config["dataset"]["image_features_val_h5"])
+    config["dataset"]["image_features_test_h5"] = "{}/{}".format(args.data_dir,
+                                                                 config["dataset"]["image_features_test_h5"])
     config["dataset"]["word_counts_json"] = "{}/{}".format(args.data_dir, config["dataset"]["word_counts_json"])
     if "glove_npy" in config["dataset"]:
         config["dataset"]["glove_npy"] = "{}/{}".format(args.data_dir, config["dataset"]["glove_npy"])
@@ -749,7 +764,7 @@ def main():
     for arg in vars(args):
         print("{:<20}: {}".format(arg, getattr(args, arg)))
 
-    print("Training phase from the python code: ",args.phase)
+    print("Training phase from the python code: ", args.phase)
     # Normal training
     if args.phase in ["training", "both"]:
         print("Starting training")
@@ -769,7 +784,6 @@ def main():
             train(config, args, dataloader_dic, device, finetune=True, load_pthpath=args.load_finetune_pthpath,
                   finetune_regression=args.dense_regression, dense_annotation_type=args.dense_annotation_type)
 
-
     # Train only on dense annotations
     if args.phase in ["dense_scratch_train"]:
         print("Starting finetuning")
@@ -777,7 +791,6 @@ def main():
         dataloader_dic = get_dataloader(config, args, finetune=True)
         train(config, args, dataloader_dic, device, finetune=True,
               dense_scratch_train=True)
-
 
     print("Training done! Time: ", datetime.datetime.utcnow())
 

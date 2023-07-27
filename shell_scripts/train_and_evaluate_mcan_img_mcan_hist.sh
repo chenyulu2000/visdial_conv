@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-source activate visdialch
 
 # Common paths
 export CURRENT_DIR=${PWD}
@@ -13,8 +12,8 @@ export PROJECT_DIR="$(dirname "$PARENT_DIR")"
 ## SA: todo if config also from
 export CONFIG_YML=$CONFIG_DIR/mcan_img_mcan_hist.yml
 
-export DATA_DIR=$PROJECT_DIR/data
-export MODEL_DIR=$PROJECT_DIR/models/hwu_new_models
+export DATA_DIR=/home/data/visdial_v1.0_test-std/
+export MODEL_DIR=$CODE_DIR/models/hwu_new_models
 read -p "Enter the GPU id (as 0/1/2):  " GPU_ID
 read -p "Enter the model name:  " MODEL_NAME
 export MODEL_NAME=${MODEL_NAME:-mcan_img_mcan_hist}
